@@ -3,18 +3,18 @@ POST http://localhost:1323/groups
 Content-Type: application/json
 
 {
-    "groupId": "a00",
+    "groupId": "a01",
     "name": "Sensor Group A",
     "description": "Group for temperature sensors"
 }
 
 ### Update Group
-PUT http://localhost:1323/groups/a00
+PUT http://localhost:1323/groups/a01
 Content-Type: application/json
 
 {
-    "name": "Sensor Group A - Updated",
-    "description": "Updated group for temperature sensors"
+    "name": "Sensor Group A",
+    "description": "Group for temperature sensors in the living room"
 }
 
 ### Get Group by ID
