@@ -1,0 +1,5 @@
+### Req 1
+POST http://localhost:1323/data
+Content-Type: application/x-www-form-urlencoded
+
+sensorId=1&groupId=a00&dataType=float&dataUnit=°C&dataInfo=Room%20Temperature&data=25.2

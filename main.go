@@ -3,12 +3,15 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
-	"os"
-	"path/filepath"
+	"time"
 
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/labstack/echo/v4"
 )
+
+var db *sql.DB
 
 func main() {
 	e := echo.New()
@@ -16,6 +19,13 @@ func main() {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
 	e.POST("/data", postData)
+
+	var err error
+	db, err = initSqlite3()
+	if err != nil {
+		log.Fatal("Failed instanciating the db object: " + err.Error())
+	}
+
 	e.Logger.Fatal(e.Start(":1323"))
 
 }
@@ -28,21 +38,19 @@ func postData(c echo.Context) error {
 	dataInfo := c.FormValue("dataInfo") // Information about the data
 	data := c.FormValue("data")
 
+	err := insertDataSqlite3(db, sensorId, groupId, dataType, dataUnit, dataInfo, data)
+	if err != nil {
+		log.Println(err)
+	}
+
 	return c.String(http.StatusOK, "Sensor: "+sensorId+" ("+dataType+") | "+data+dataUnit+" | "+dataInfo)
 
 }
 
 func initSqlite3() (*sql.DB, error) {
-	dir, err := os.MkdirTemp("", "test-")
-	if err != nil {
-		return nil, err
-	}
+	dbPath := "db.sqlite"
 
-	defer os.RemoveAll(dir)
-
-	fn := filepath.Join(dir, "db")
-
-	db, err := sql.Open("sqlite", fn)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -59,20 +67,45 @@ func insertDataSqlite3(db *sql.DB, sensorId string, groupId string, dataType str
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	if !rows.Next() {
-		var dtype string
+	var dtype string
 
-		switch dataType {
-		case "string":
-			dtype = "TEXT"
-		case "text":
-			dtype = "TEXT"
-		case "float":
-			dtype = "REAL"
-		case "int":
-			dtype = "INTEGER"
+	switch dataType {
+	case "string":
+		dtype = "TEXT"
+	case "text":
+		dtype = "TEXT"
+	case "float":
+		dtype = "REAL"
+	case "int":
+		dtype = "INTEGER"
+	}
+	exist := false
+	for rows.Next() {
+		var (
+			cid          int
+			name         string
+			dataType     string
+			notNull      int
+			defaultValue sql.NullString
+			primaryKey   int
+		)
+
+		err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &primaryKey)
+		if err != nil {
+			log.Fatal(err)
 		}
+
+		// Check if the column name matches the one you want to verify,
+		// and if the data type matches your expected type.
+		if name == "data" && !(dataType == dtype) {
+			log.Fatal("The table " + groupId + " cannot handle only " + dataType + " not " + dtype)
+		}
+		exist = true
+	}
+
+	if !exist {
 
 		query = fmt.Sprintf(`CREATE TABLE %s  (
 			ID INTEGER PRIMARY KEY,
@@ -89,6 +122,21 @@ func insertDataSqlite3(db *sql.DB, sensorId string, groupId string, dataType str
 	}
 
 	// insert the data
+
+	insertStatement := fmt.Sprintf("INSERT INTO %s (sensorId,dataUnit,dataInfo,data,time) VALUES (?,?,?,?,?)", groupId)
+
+	result, err := db.Exec(insertStatement, sensorId, dataUnit, dataInfo, data, time.Now())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+
+	fmt.Printf("Inserted %d rows.\n", rowsAffected)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return nil
 
