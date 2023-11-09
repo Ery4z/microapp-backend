@@ -9,16 +9,20 @@ Content-Type: application/json
 }
 
 ### Update Group
-PUT http://localhost:1323/groups/a01
+PUT http://localhost:1323/groups/a04
 Content-Type: application/json
 
 {
-    "name": "Sensor Group A",
-    "description": "Group for temperature sensors in the living room"
+    "name": "Sensor Group B",
+    "description": "Group for temperature sensors in the bed room"
 }
 
 ### Get Group by ID
-GET http://localhost:1323/groups/a00
+GET http://localhost:1323/groups/a04
 
 ### List all Groups
 GET http://localhost:1323/groups
+
+
+### Get data for a group
+GET http://localhost:1323/groups/a04/sensors

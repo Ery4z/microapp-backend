@@ -131,3 +131,44 @@ func insertGroup(groupId, name, description string) error {
 	_, err := db.Exec("INSERT INTO groups (groupId, name, description) VALUES (?, ?, ?)", groupId, name, description)
 	return err
 }
+
+// getLatestSensorData retrieves the latest data for each sensor in the given group table.
+func getLatestSensorData(groupId string) ([]SensorData, error) {
+	// Ensure the groupId is safe to concatenate by checking against a pattern
+	// that allows only alphanumeric characters (and underscore if needed).
+	if !isAlphanumeric(groupId) {
+		return nil, fmt.Errorf("invalid group ID")
+	}
+
+	// Dynamically create the query string using the safe groupId.
+	query := fmt.Sprintf(`
+    SELECT sensorId, dataUnit, dataInfo, data, MAX(time) as timestamp
+    FROM '%s'
+    GROUP BY sensorId
+    ORDER BY timestamp DESC`, groupId) // Safe to concatenate after isAlphanumeric check
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sensors []SensorData
+	for rows.Next() {
+		var sd SensorData
+		if err := rows.Scan(&sd.SensorID, &sd.DataUnit, &sd.DataInfo, &sd.Data, &sd.Timestamp); err != nil {
+			return nil, err
+		}
+		sensors = append(sensors, sd)
+	}
+
+	return sensors, nil
+}
+
+type SensorData struct {
+	SensorID  string `json:"sensorId"`
+	Data      string `json:"data"`
+	DataUnit  string `json:"dataUnit"`
+	DataInfo  string `json:"dataInfo"`
+	Timestamp string `json:"timestamp"`
+}

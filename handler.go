@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/labstack/echo/v4"
 )
@@ -110,4 +112,27 @@ func listGroups(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, groups)
+}
+
+func getSensors(c echo.Context) error {
+	groupId := c.Param("groupId")
+	fmt.Println("Got req")
+
+	// This is a basic security measure to avoid SQL injection by ensuring the groupId is alphanumeric.
+	// You should enforce stricter checks depending on your application requirements.
+	if !isAlphanumeric(groupId) {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid group ID")
+	}
+
+	sensors, err := getLatestSensorData(groupId)
+	if err != nil {
+		log.Printf("Failed to get sensors for group %s: %v", groupId, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get sensor data")
+	}
+	return c.JSON(http.StatusOK, sensors)
+}
+
+// isAlphanumeric checks if a string contains only alphanumeric characters.
+func isAlphanumeric(str string) bool {
+	return regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString(str)
 }

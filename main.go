@@ -1,28 +1,27 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
 	e := echo.New()
 
+	// Middleware
+	e.Use(middleware.Logger()) // This will log the incoming requests
+
+	e.Static("/", "static")
 	// Routes
-	e.GET("/", helloWorld)
 	e.POST("/data", postData)
 	e.POST("/groups", createGroup)
 	e.PUT("/groups/:id", updateGroup)
 	e.GET("/groups/:id", getGroup)
 	e.GET("/groups", listGroups)
+	e.GET("/groups/:groupId/sensors", getSensors)
 
 	// Database initialization
 	initDB()
 
 	e.Logger.Fatal(e.Start(":1323"))
-}
-
-func helloWorld(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
 }
