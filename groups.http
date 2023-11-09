@@ -1,0 +1,24 @@
+### Create Group
+POST http://localhost:1323/groups
+Content-Type: application/json
+
+{
+    "groupId": "a00",
+    "name": "Sensor Group A",
+    "description": "Group for temperature sensors"
+}
+
+### Update Group
+PUT http://localhost:1323/groups/a00
+Content-Type: application/json
+
+{
+    "name": "Sensor Group A - Updated",
+    "description": "Updated group for temperature sensors"
+}
+
+### Get Group by ID
+GET http://localhost:1323/groups/a00
+
+### List all Groups
+GET http://localhost:1323/groups

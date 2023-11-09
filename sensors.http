@@ -2,4 +2,9 @@
 POST http://localhost:1323/data
 Content-Type: application/x-www-form-urlencoded
 
-sensorId=1&groupId=a00&dataType=float&dataUnit=°C&dataInfo=Room%20Temperature&data=25.2
+sensorId=1
+&groupId=a01
+&dataType=float
+&dataUnit=°C
+&dataInfo=Room Temperature
+&data=24.5
