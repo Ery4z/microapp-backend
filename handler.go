@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
 
 	"github.com/labstack/echo/v4"
 )
@@ -132,7 +131,22 @@ func getSensors(c echo.Context) error {
 	return c.JSON(http.StatusOK, sensors)
 }
 
-// isAlphanumeric checks if a string contains only alphanumeric characters.
-func isAlphanumeric(str string) bool {
-	return regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString(str)
+type GroupSensorRequest struct {
+	GroupIds []string `json:"groupIds"`
+}
+
+func getGroupSensors(c echo.Context) error {
+	var req GroupSensorRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request")
+	}
+
+	// Assuming you have a function to fetch sensor data for multiple groups
+	data, err := fetchSensorDataForGroups(req.GroupIds)
+	if err != nil {
+		log.Printf("Error fetching sensors for groups: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error fetching sensor data")
+	}
+
+	return c.JSON(http.StatusOK, data)
 }

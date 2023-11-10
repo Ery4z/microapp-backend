@@ -19,6 +19,7 @@ func main() {
 	e.GET("/groups/:id", getGroup)
 	e.GET("/groups", listGroups)
 	e.GET("/groups/:groupId/sensors", getSensors)
+	e.POST("/groups/sensors", getGroupSensors)
 
 	// Database initialization
 	initDB()

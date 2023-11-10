@@ -1,29 +1,26 @@
+let currentGroupIds = [];
+
 document.addEventListener('DOMContentLoaded', function() {
     fetchGroups();
-    // Set an interval for automatic update every 30 seconds
-    setInterval(fetchGroups, 1000);
+    setInterval(fetchGroups, 20000); // Poll for new groups every 20 seconds
+    setInterval(updateSensorData, 5000); // Update sensor values every 5 seconds
 });
 
 function fetchGroups() {
     fetch('http://localhost:1323/groups')
         .then(response => response.json())
-        .then(groups => updateGroups(groups))
+        .then(groups => {
+            currentGroupIds = groups.map(group => group.groupId);
+            renderGroups(groups);
+        })
         .catch(error => console.error('Error fetching groups:', error));
 }
 
-function updateGroups(groups) {
+function renderGroups(groups) {
     const groupsContainer = document.getElementById('groups');
-    // Create a Map of existing groups for quick access
-    const existingGroupsMap = new Map();
-    document.querySelectorAll('.group').forEach(groupDiv => {
-        existingGroupsMap.set(groupDiv.id, groupDiv);
-    });
-
-    // Iterate over fetched groups and update the DOM accordingly
     groups.forEach(group => {
-        let groupElement = existingGroupsMap.get(`group-${group.groupId}`);
+        let groupElement = document.getElementById(`group-${group.groupId}`);
         if (!groupElement) {
-            // If the group doesn't exist on the page, create it
             groupElement = document.createElement('div');
             groupElement.id = `group-${group.groupId}`;
             groupElement.className = 'group';
@@ -32,56 +29,46 @@ function updateGroups(groups) {
                 <ul id="sensors-${group.groupId}"></ul>
             `;
             groupsContainer.appendChild(groupElement);
-        } else {
-            // If it exists, update the group name if necessary
-            const groupNameElement = groupElement.querySelector('h2');
-            if (groupNameElement.textContent !== group.name) {
-                groupNameElement.textContent = group.name;
-            }
-            // Remove the group from the Map so we know it's been processed
-            existingGroupsMap.delete(groupElement.id);
         }
-        fetchSensors(group.groupId);
     });
+}
+function updateSensorData() {
+    if (currentGroupIds.length === 0) {
+        console.log("No group IDs to fetch sensor data for.");
+        return; // No groups to update
+    }
 
-    // Any groups left in the Map do not exist in the fetched groups and should be removed
-    existingGroupsMap.forEach(groupDiv => groupDiv.remove());
+    fetch('http://localhost:1323/groups/sensors', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ groupIds: currentGroupIds })
+    })
+    .then(response => response.json())
+    .then(groupSensorsData => {
+        console.log("Fetched sensor data:", groupSensorsData);
+
+        // Iterate over each group in the object
+        Object.entries(groupSensorsData).forEach(([groupId, sensors]) => {
+            updateGroupSensors(groupId, sensors);
+        });
+    })
+    .catch(error => console.error('Error fetching group sensors:', error));
 }
 
-function fetchSensors(groupId) {
-    fetch(`http://localhost:1323/groups/${groupId}/sensors`)
-        .then(response => response.json())
-        .then(sensors => updateSensors(groupId, sensors))
-        .catch(error => console.error(`Error fetching sensors for group ${groupId}:`, error));
-}
+function updateGroupSensors(groupId, sensors) {
+    const sensorsList = document.getElementById(`sensors-${groupId}`);
+    if (!sensorsList) {
+        console.error(`No sensors list element found for group ID ${groupId}`);
+        return; // Group not rendered yet
+    }
 
-function updateSensors(groupId, sensors) {
-    const sensorsListId = `sensors-${groupId}`;
-    const sensorsList = document.getElementById(sensorsListId);
-
-    // Create a Map of existing sensor list items for quick access
-    const existingSensorsMap = new Map();
-    sensorsList.querySelectorAll('li').forEach(sensorLi => {
-        existingSensorsMap.set(sensorLi.id, sensorLi);
-    });
-
-    // Iterate over fetched sensors and update the DOM accordingly
+    sensorsList.innerHTML = ''; // Clear existing sensor data
     sensors.forEach(sensor => {
-        let sensorItem = existingSensorsMap.get(`sensor-${sensor.sensorId}`);
-        if (!sensorItem) {
-            // If the sensor item doesn't exist, create it
-            sensorItem = document.createElement('li');
-            sensorItem.id = `sensor-${sensor.sensorId}`;
-            sensorItem.textContent = `Sensor ID: ${sensor.sensorId}, Last Measure: ${sensor.data}`;
-            sensorsList.appendChild(sensorItem);
-        } else {
-            // If it exists, update the sensor data
-            sensorItem.textContent = `Sensor ID: ${sensor.sensorId}, Last Measure: ${sensor.data}`;
-            // Remove the sensor from the Map so we know it's been processed
-            existingSensorsMap.delete(sensorItem.id);
-        }
+        const sensorItem = document.createElement('li');
+        sensorItem.textContent = `Sensor ID: ${sensor.sensorId}, Last Measure: ${sensor.data}`;
+        sensorsList.appendChild(sensorItem);
     });
-
-    // Any sensors left in the Map do not exist in the fetched sensors and should be removed
-    existingSensorsMap.forEach(sensorLi => sensorLi.remove());
 }
+

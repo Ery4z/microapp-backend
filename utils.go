@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"regexp"
 	"time"
 )
 
@@ -165,10 +166,53 @@ func getLatestSensorData(groupId string) ([]SensorData, error) {
 	return sensors, nil
 }
 
+func fetchSensorDataForGroups(groupIds []string) (map[string][]SensorData, error) {
+	result := make(map[string][]SensorData)
+
+	for _, groupId := range groupIds {
+		// Ensure the groupId is safe to concatenate by checking against a pattern
+		// that allows only alphanumeric characters (and underscore if needed).
+		if !isAlphanumeric(groupId) {
+			return nil, fmt.Errorf("invalid group ID: %s", groupId)
+		}
+
+		// Dynamically create the query string using the safe groupId.
+		query := fmt.Sprintf(`
+        SELECT sensorId, dataUnit, dataInfo, data, MAX(time) as timestamp
+        FROM '%s'
+        GROUP BY sensorId
+        ORDER BY timestamp DESC`, groupId) // Safe to concatenate after isAlphanumeric check
+
+		rows, err := db.Query(query)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var sensors []SensorData
+		for rows.Next() {
+			var sd SensorData
+			if err := rows.Scan(&sd.SensorID, &sd.DataUnit, &sd.DataInfo, &sd.Data, &sd.Timestamp); err != nil {
+				return nil, err
+			}
+			sensors = append(sensors, sd)
+		}
+
+		result[groupId] = sensors
+	}
+
+	return result, nil
+}
+
 type SensorData struct {
 	SensorID  string `json:"sensorId"`
 	Data      string `json:"data"`
 	DataUnit  string `json:"dataUnit"`
 	DataInfo  string `json:"dataInfo"`
 	Timestamp string `json:"timestamp"`
+}
+
+// isAlphanumeric checks if a string contains only alphanumeric characters.
+func isAlphanumeric(str string) bool {
+	return regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString(str)
 }
